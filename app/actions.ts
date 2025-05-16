@@ -1,33 +1,36 @@
 "use server";
 
-import { formSchema } from "./utils/validation";
+import { formProductSchema } from "../app/utils/validations/product";
 import { z } from "zod";
 
-/* export const transformZodErrors = (error: z.ZodError) => {
-  return error.issues.map((issue) => ({
-    path: issue.path.join("."),
-    message: issue.message,
-  }));
-}; */
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
+import { productsTable, usersTable } from './db/schema';
 
-export async function submitForm(formData: FormData) {
+const db = drizzle(process.env.DATABASE_URL!);
 
-    console.log("submitForm called");
-    console.log({ formData });
+import { ZodError } from "zod";
+ 
+export async function createProductAction(formData: FormData) {
+
     try {
-        // fake a delay
-        //await new Promise((resolve) => setTimeout(resolve, 1000));
-
         //validate the FormData
-        const validatedFields = formSchema.parse({
+        const validatedFields = formProductSchema.parse({
             name: formData.get("name"),
-            email: formData.get("email"),
+            description: formData.get("description"),
+            price: formData.get("price"),
         });
-
-        console.log({ validatedFields });
-
+  
         // send validated data to database here
 
+        const product: typeof productsTable.$inferInsert = {
+            name: validatedFields.name,
+            price: validatedFields.price,
+            description: validatedFields.description,
+        };
+       
+        await db.insert(productsTable).values(product);
+  
         return {
             errors: null,
             data: "data received and mutated",
@@ -47,4 +50,11 @@ export async function submitForm(formData: FormData) {
             data: null,
         };
     }
+}
+ 
+function transformZodErrors(error: z.ZodError<any>) {
+    return error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+    }));
 }
